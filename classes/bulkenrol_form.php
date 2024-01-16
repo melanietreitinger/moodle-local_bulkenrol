@@ -52,6 +52,11 @@ class bulkenrol_form extends moodleform {
 
         // Infotext.
         $msg = get_string('bulkenrol_form_intro', 'local_bulkenrol');
+        if (get_config('local_bulkenrol', 'autosnyc')
+                && '' != get_config('local_bulkenrol', 'remotedomain')
+                && '' != get_config('local_bulkenrol', 'webservicetoken')) {
+            $msg .= '<br />' . get_string('remoteusersync_form_intro', 'local_bulkenrol', get_config('local_bulkenrol', 'remotedomain'));
+        }
         $mform->addElement('html', '<div id="intro">'.$msg.'</div>');
 
         // Textarea for Emails.

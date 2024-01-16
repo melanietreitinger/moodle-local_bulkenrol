@@ -73,3 +73,13 @@ $string['navigation_desc'] = 'The location where the navigation node for user bu
 $string['nav_course'] = 'Navigation node in course navigation';
 $string['nav_participants'] = 'Navigation node in participants page jump menu';
 $string['nav_both'] = 'Navigation node both in participants page jump menu and in course navigation';
+$string['remoteusersync_form_intro'] = 'If there is no user account found for this e-mail address on this Moodle site, 
+there will be a check on <em>{$a}</em> for an account. If it is found there it will be synced to this Moodle site.';
+$string['remoteusersync'] = 'Sync user account from remote Moodle site';
+$string['remoteusersync_desc'] = 'If there is no user account found for the submitted email address on this Moodle, 
+a remote Moodle site can be checked via webservice. If the account exists there, it will then be created on this Moodle.';
+$string['setting_remotedomain'] = 'Remote Moodle URL';
+$string['setting_remotedomain_desc'] = 'The URL of the remote Moodle where the course is being synced.';
+$string['setting_webservicetoken'] = 'Webservice Token';
+$string['setting_webservicetoken_desc'] = 'Token of the remote Moodle webservice.';
+$string['setting_autosnyc'] = 'Enable auto-sync of user accounts';

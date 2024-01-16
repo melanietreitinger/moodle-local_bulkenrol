@@ -162,7 +162,11 @@ function local_bulkenrol_check_email($email, $linecnt, $courseid, $context, $cur
         // Email is valid.
     } else {
         // Check for moodle user with email.
-        list($error, $userrecord) = local_bulkenrol_get_user($email);
+        [$error, $userrecord] = local_bulkenrol_get_user($email);
+
+        if (!empty($error) && get_config('local_bulkenrol', 'autosnyc')) {
+            [$error, $userrecord] = local_bulkenrol_get_external_user($email);
+        }
         if (!empty($error)) {
             $checkedemails->emails_to_ignore[] = $email;
             if (array_key_exists($linecnt, $checkedemails->error_messages)) {
@@ -273,6 +277,95 @@ function local_bulkenrol_get_user($email) {
 
         return [$error, $userrecord];
     }
+}
+
+/**
+ * Takes an email and makes an api call to a remote Moodle site to check if the account exists there.
+ * If yes, the account is created here on this Moodle.
+ * @param string $email
+ * @return array [$error, $userrecord]
+ * @throws coding_exception
+ * @throws invalid_parameter_exception
+ */
+function local_bulkenrol_get_external_user($email) {
+    global $CFG;
+    [$error, $userrecord] = local_bulkenrol_make_api_call('core_user_get_users',
+            'criteria[0][key]=email&criteria[0][value]='.urlencode($email));
+
+    // If found: create user account.
+    if (!empty($userrecord->users[0])) {
+        require_once($CFG->dirroot . "/user/externallib.php");
+        $keystokeep = ['username', 'auth', 'password', 'firstname', 'lastname', 'email', 'maildisplay', 'city', 'country',
+                'timezone', 'description', 'firstnamephonetic', 'lastnamephonetic', 'middlename', 'alternatename', 'interests',
+                'idnumber', 'institution', 'department', 'phone1', 'phone2', 'address', 'lang', 'calendartype', 'theme',
+                'mailformat', 'customfields', 'preferences'];
+        $users = [];
+        $users['users'] = (array)$userrecord->users[0];
+        foreach ($users['users'] as $key => $value) {
+            if (!in_array($key, $keystokeep)) {
+                unset($users['users'][$key]);
+            }
+        }
+        $users['users']['createpassword'] = true;
+        // Make sure lang is available - if not, use english.
+        $availablelangs  = get_string_manager()->get_list_of_translations();
+        $users['users']['lang'] = (isset($availablelangs[$users['users']['lang']]) ? $users['users']['lang'] : 'en');
+
+        $newusers = core_user_external::create_users($users);
+
+        if (empty($newusers)) {
+            $error = get_string('error_getting_user_for_email', 'local_bulkenrol', $email);
+            $userrecord->users[0] = '';
+        }
+        else {
+            // If user was created succesessfully use the new id.
+            $userrecord->users[0]->id = $newusers[0]['id'];
+        }
+    }
+
+    return [$error, $userrecord->users[0] ?? ''];
+}
+
+/**
+ * Make a webservice call via curl.
+ *
+ * @param string $function The webservice function to be called.
+ * @param array $params An array of data delivered to the webservice function
+ * @return array [$error, $result]
+ * @throws coding_exception
+ * @throws dml_exception
+ */
+function local_bulkenrol_make_api_call($function, $params) {
+    $error = null;
+    $result = null;
+
+    $server = get_config('local_bulkenrol', 'remotedomain');
+    $token = get_config('local_bulkenrol', 'webservicetoken');
+
+    if ('' == $server) {
+        return [get_string('invalidadminsettingname','error', 'remotedomain'), $result];
+    }
+    if ('' == $token) {
+        return [get_string('invalidadminsettingname', 'error','webservicetoken'), $result];
+    }
+
+    $url = $server.'/webservice/rest/server.php?wstoken='.$token.'&wsfunction='.$function.'&moodlewsrestformat=json';
+
+    $curl = new curl;
+    $response = $curl->post($url, $params);
+    $result = json_decode($response);
+
+    if (isset($result->users) && empty($result->users)) {
+        $error = get_string('error_no_record_found_for_email', 'local_bulkenrol',
+                urldecode(substr($params, strpos($params, '[value]=')+8)));
+    }
+
+    if (isset($result->message) || isset($result->errorcode)) {
+        $error = get_string('error') . ': ';
+        $error .= isset($result->errorcode) ? $result->errorcode . ' - ' : '';
+        $error .= $result->message ?? '';
+    }
+    return [$error, $result];
 }
 
 /**

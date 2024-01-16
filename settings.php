@@ -91,6 +91,28 @@ if ($hassiteconfig) {
                         $navigationoptions)
         );
         unset($navigationoptions);
+
+        // Setting for remote Moodle user sync.
+        $settings->add(new admin_setting_heading('local_bulkenrol/remoteusersync',
+                        get_string('remoteusersync', 'local_bulkenrol'),
+                        get_string('remoteusersync_desc', 'local_bulkenrol'))
+        );
+
+        $settings->add(new admin_setting_configcheckbox('local_bulkenrol/autosnyc',
+                        get_string('setting_autosnyc', 'local_bulkenrol'),
+                        '',
+                        0)
+        );
+        $settings->add(new admin_setting_configtext('local_bulkenrol/remotedomain',
+                get_string('setting_remotedomain', 'local_bulkenrol'),
+                get_string('setting_remotedomain_desc', 'local_bulkenrol'),
+                '', PARAM_URL, 60));
+
+        $settings->add(new admin_setting_configpasswordunmask('local_bulkenrol/webservicetoken',
+                get_string('setting_webservicetoken','local_bulkenrol'),
+                get_string('setting_webservicetoken_desc', 'local_bulkenrol'),
+                ''));
+
     }
 
     $ADMIN->add('enrolments', $settings);
