@@ -298,7 +298,7 @@ function local_bulkenrol_get_external_user($email) {
         $keystokeep = ['username', 'auth', 'password', 'firstname', 'lastname', 'email', 'maildisplay', 'city', 'country',
                 'timezone', 'description', 'firstnamephonetic', 'lastnamephonetic', 'middlename', 'alternatename', 'interests',
                 'idnumber', 'institution', 'department', 'phone1', 'phone2', 'address', 'lang', 'calendartype', 'theme',
-                'mailformat', 'customfields', 'preferences'];
+                'mailformat', 'preferences'];
         $users = [];
         $users['users'] = (array)$userrecord->users[0];
         foreach ($users['users'] as $key => $value) {
