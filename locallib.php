@@ -311,6 +311,13 @@ function local_bulkenrol_get_external_user($email) {
         $availablelangs  = get_string_manager()->get_list_of_translations();
         $users['users']['lang'] = (isset($availablelangs[$users['users']['lang']]) ? $users['users']['lang'] : 'en');
 
+        $usernamefields = core_user\fields::get_name_fields();
+        foreach ($usernamefields as $field) {
+            if (!isset($users['users'][$field])) {
+                $users['users'][$field] = '';
+            }
+        }
+
         $newusers = core_user_external::create_users($users);
 
         if (empty($newusers)) {
