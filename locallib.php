@@ -288,7 +288,7 @@ function local_bulkenrol_get_user($email) {
  * @throws invalid_parameter_exception
  */
 function local_bulkenrol_get_external_user($email) {
-    global $CFG;
+    global $CFG, $USER;
     [$error, $userrecord] = local_bulkenrol_make_api_call('core_user_get_users',
             'criteria[0][key]=email&criteria[0][value]='.urlencode($email));
 
@@ -318,7 +318,11 @@ function local_bulkenrol_get_external_user($email) {
             }
         }
 
+        // Create users has to be done as admin user because 'moodle/user:create' is needed.
+        $CURRENTUSER = $USER;
+        $USER = get_admin();
         $newusers = core_user_external::create_users($users);
+        $USER = $CURRENTUSER;
 
         if (empty($newusers)) {
             $error = get_string('error_getting_user_for_email', 'local_bulkenrol', $email);
