@@ -321,11 +321,16 @@ function local_bulkenrol_get_external_user($email) {
         // Create users has to be done as admin user because 'moodle/user:create' is needed.
         $CURRENTUSER = $USER;
         $USER = get_admin();
-        $newusers = core_user_external::create_users($users);
+        try {
+            $newusers = core_user_external::create_users($users);
+        }
+        catch (Exception $e) {
+            $error .= ' '.$e->debuginfo.' / ';
+        }
         $USER = $CURRENTUSER;
 
         if (empty($newusers)) {
-            $error = get_string('error_getting_user_for_email', 'local_bulkenrol', $email);
+            $error .= get_string('error_getting_user_for_email', 'local_bulkenrol', $email);
             $userrecord->users[0] = '';
         }
         else {
