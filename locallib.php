@@ -243,6 +243,20 @@ function local_bulkenrol_parse_emails($emails) {
 }
 
 /**
+ * Parse email and replace @rub.de with long version.
+ *
+ * @param $email
+ * @return string
+ */
+function local_bulkenrol_parse_rubmail($email) {
+    if (preg_match('/@rub\.de/i', $email) || preg_match('/@[a-z]+\.rub\.de/i', $email)) {
+        $parts = explode('@', $email);
+        $email = $parts[0].'@'.str_ireplace('rub.de', 'ruhr-uni-bochum.de', $parts[1]);
+    }
+    return $email;
+}
+
+/**
  * Takes an e-mail and returns a moodle user record and error string (if occured).
  *
  * @param string $email E-mail used to search for a user
@@ -289,6 +303,9 @@ function local_bulkenrol_get_user($email) {
  */
 function local_bulkenrol_get_external_user($email) {
     global $CFG, $USER;
+
+    $email = local_bulkenrol_parse_rubmail($email);
+
     [$error, $userrecord] = local_bulkenrol_make_api_call('core_user_get_users',
             'criteria[0][key]=email&criteria[0][value]='.urlencode($email));
 
