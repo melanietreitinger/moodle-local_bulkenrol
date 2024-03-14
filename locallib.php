@@ -306,7 +306,12 @@ function local_bulkenrol_get_external_user($email) {
                 unset($users['users'][$key]);
             }
         }
-        $users['users']['createpassword'] = true;
+
+        $authplugin = get_auth_plugin($users['users']['auth']);
+        if (!$authplugin->is_internal()) {
+            $users['users']['password'] = AUTH_PASSWORD_NOT_CACHED;
+        }
+
         // Make sure lang is available - if not, use english.
         $availablelangs  = get_string_manager()->get_list_of_translations();
         $users['users']['lang'] = (isset($availablelangs[$users['users']['lang']]) ? $users['users']['lang'] : 'en');
