@@ -303,65 +303,90 @@ function local_bulkenrol_get_user($email) {
  */
 function local_bulkenrol_get_external_user($email) {
     global $CFG, $USER;
+    $preferredmethods = ['ldap', 'shibboleth'];
+    $availablemethods = [];
+    $preferredauth = '';
+    $users = [];
 
     $email = local_bulkenrol_parse_rubmail($email);
 
     [$error, $userrecord] = local_bulkenrol_make_api_call('core_user_get_users',
             'criteria[0][key]=email&criteria[0][value]='.urlencode($email));
 
-    // If found: create user account.
-    if (!empty($userrecord->users[0])) {
-        require_once($CFG->dirroot . "/user/externallib.php");
-        $keystokeep = ['username', 'auth', 'password', 'firstname', 'lastname', 'email', 'maildisplay', 'city', 'country',
-                'timezone', 'description', 'firstnamephonetic', 'lastnamephonetic', 'middlename', 'alternatename', 'interests',
-                'idnumber', 'institution', 'department', 'phone1', 'phone2', 'address', 'lang', 'calendartype', 'theme',
-                'mailformat', 'preferences'];
-        $users = [];
+    if (!is_array($userrecord->users)) {
+        $error .= get_string('error_getting_user_for_email', 'local_bulkenrol', $email);
+        return [$error, false];
+    }
+
+    // Check for preferred method if more than one user entry was found.
+    if (1 < count($userrecord->users)) {
+        foreach ($userrecord->users as $entry) {
+            $availablemethods [] = $entry->auth;
+        }
+
+        // Search for preferred methods and stop on first hit.
+        foreach ($preferredmethods as $m) {
+            if (in_array($m, $availablemethods)) {
+                $preferredauth = $m;
+                break;
+            }
+        }
+
+        // Select userrecord based on preferred and available auth methods.
+        foreach ($userrecord->users as $entry) {
+            $users['users'] = (array)$entry;
+            if (!empty($preferredauth) && $preferredauth === $entry->auth) {
+                break;
+            }
+        }
+    } else {
         $users['users'] = (array)$userrecord->users[0];
-        foreach ($users['users'] as $key => $value) {
-            if (!in_array($key, $keystokeep)) {
-                unset($users['users'][$key]);
-            }
-        }
+    }
 
-        $authplugin = get_auth_plugin($users['users']['auth']);
-        if (!$authplugin->is_internal()) {
-            $users['users']['password'] = AUTH_PASSWORD_NOT_CACHED;
-        }
+    require_once($CFG->dirroot . "/user/externallib.php");
+    $keystokeep = ['username', 'auth', 'password', 'firstname', 'lastname', 'email', 'maildisplay', 'city', 'country',
+            'timezone', 'description', 'firstnamephonetic', 'lastnamephonetic', 'middlename', 'alternatename', 'interests',
+            'idnumber', 'institution', 'department', 'phone1', 'phone2', 'address', 'lang', 'calendartype', 'theme',
+            'mailformat', 'preferences'];
 
-        // Make sure lang is available - if not, use english.
-        $availablelangs  = get_string_manager()->get_list_of_translations();
-        $users['users']['lang'] = (isset($availablelangs[$users['users']['lang']]) ? $users['users']['lang'] : 'en');
-
-        $usernamefields = core_user\fields::get_name_fields();
-        foreach ($usernamefields as $field) {
-            if (!isset($users['users'][$field])) {
-                $users['users'][$field] = '';
-            }
-        }
-
-        // Create users has to be done as admin user because 'moodle/user:create' is needed.
-        $CURRENTUSER = $USER;
-        $USER = get_admin();
-        try {
-            $newusers = core_user_external::create_users($users);
-        }
-        catch (Exception $e) {
-            $error .= ' '.$e->debuginfo.' / ';
-        }
-        $USER = $CURRENTUSER;
-
-        if (empty($newusers)) {
-            $error .= get_string('error_getting_user_for_email', 'local_bulkenrol', $email);
-            $userrecord->users[0] = '';
-        }
-        else {
-            // If user was created succesessfully use the new id.
-            $userrecord->users[0]->id = $newusers[0]['id'];
+    foreach ($users['users'] as $key => $value) {
+        if (!in_array($key, $keystokeep)) {
+            unset($users['users'][$key]);
         }
     }
 
-    return [$error, $userrecord->users[0] ?? ''];
+    $authplugin = get_auth_plugin($users['users']['auth']);
+    if (!$authplugin->is_internal()) {
+        $users['users']['password'] = AUTH_PASSWORD_NOT_CACHED;
+    }
+
+    // Make sure lang is available - if not, use english.
+    $availablelangs  = get_string_manager()->get_list_of_translations();
+    $users['users']['lang'] = (isset($availablelangs[$users['users']['lang']]) ? $users['users']['lang'] : 'en');
+
+    $usernamefields = core_user\fields::get_name_fields();
+    foreach ($usernamefields as $field) {
+        if (!isset($users['users'][$field])) {
+            $users['users'][$field] = '';
+        }
+    }
+
+    // Create users has to be done as admin user because 'moodle/user:create' is needed.
+    $CURRENTUSER = $USER;
+    $USER = get_admin();
+    try {
+        $createdusers = core_user_external::create_users($users);
+    }
+    catch (Exception $e) {
+        $error .= ' '.$e->debuginfo.' / ';
+    }
+    $USER = $CURRENTUSER;
+
+    if (empty($createdusers)) {
+        $error .= get_string('error_getting_user_for_email', 'local_bulkenrol', $email);
+    }
+
+    return [$error, $createdusers[0] ?? ''];
 }
 
 /**
