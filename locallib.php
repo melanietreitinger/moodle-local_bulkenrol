@@ -167,6 +167,7 @@ function local_bulkenrol_check_email($email, $linecnt, $courseid, $context, $cur
         if (!empty($error) && get_config('local_bulkenrol', 'autosnyc')) {
             [$error, $userrecord] = local_bulkenrol_get_external_user($email);
         }
+
         if (!empty($error)) {
             $checkedemails->emails_to_ignore[] = $email;
             if (array_key_exists($linecnt, $checkedemails->error_messages)) {
@@ -356,7 +357,9 @@ function local_bulkenrol_get_external_user($email) {
     }
 
     $authplugin = get_auth_plugin($users['users']['auth']);
-    if (!$authplugin->is_internal()) {
+    if ($authplugin->is_internal()) {
+        $users['users']['createpassword'] = true;
+    } else {
         $users['users']['password'] = AUTH_PASSWORD_NOT_CACHED;
     }
 
@@ -386,7 +389,7 @@ function local_bulkenrol_get_external_user($email) {
         $error .= get_string('error_getting_user_for_email', 'local_bulkenrol', $email);
     }
 
-    return [$error, $createdusers[0] ?? ''];
+    return [$error, (object)$createdusers[0] ?? ''];
 }
 
 /**
